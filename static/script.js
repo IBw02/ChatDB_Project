@@ -9,6 +9,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const sampleQueryForm = document.getElementById("sample-query-form");
     const sampleTableSelect = document.getElementById("sample-table");
     const sampleQueriesDiv = document.getElementById("sample-queries");
+    const constructSelect = document.getElementById("construct-select");  // 新增选择语言结构的下拉菜单
+    const generateConstructButton = document.getElementById("generate-construct");
 
     // 监听表单切换
     sampleTableSelect.addEventListener("change", (event) => {
@@ -353,4 +355,57 @@ document.addEventListener("DOMContentLoaded", () => {
             addMessage("Error: Unable to connect to the server.", false);
         }
     });
+        // 监听生成特定语言结构查询的点击事件
+    generateConstructButton.addEventListener("click", async () => {
+        const tableName = sampleTableSelect.value;
+        const construct = constructSelect.value; // 获取选定的语言结构
+
+        if (!tableName || !construct) {
+            alert("Please select a table and a construct type.");
+            return;
+        }
+
+        try {
+            const response = await fetch(`/generate_construct_queries?table_name=${tableName}&construct=${construct}`);
+            const data = await response.json();
+
+            if (data.error) {
+                alert(`Error: ${data.error}`);
+            } else {
+                const sampleQueriesDiv = document.getElementById("sample-queries");
+                sampleQueriesDiv.innerHTML = `<pre>${data.query}</pre>`;
+            }
+        } catch (error) {
+            console.error("Error generating construct query:", error);
+        }
+    });
+
+    document.getElementById("sample-query-form").addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        const tableName = document.getElementById("sample-table").value;
+        const queryType = document.getElementById("construct-select").value;
+
+        if (!tableName || !queryType) {
+            alert("Please select a table and a query type.");
+            return;
+        }
+
+        try {
+            const response = await fetch(`/generate_construct_queries?table_name=${tableName}&construct=${queryType}`);
+            const data = await response.json();
+
+            const sampleQueriesDiv = document.getElementById("sample-queries");
+            sampleQueriesDiv.innerHTML = "";
+
+            if (data.error) {
+                sampleQueriesDiv.innerHTML = `<p>Error: ${data.error}</p>`;
+            } else {
+                sampleQueriesDiv.innerHTML = `<pre>${data.query}</pre>`;
+            }
+        } catch (error) {
+            console.error("Error fetching construct query:", error);
+        }
+    });
+
 });

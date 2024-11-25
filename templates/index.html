@@ -38,6 +38,14 @@
         <form id="sample-query-form">
             <label for="sample-table">Select a Table:</label>
             <select id="sample-table"></select> <!-- 表名下拉菜单 -->
+            <label for="construct-select">Select Query Type:</label>
+            <select id="construct-select">
+                <option value="group_by">GROUP BY</option>
+                <option value="having">HAVING</option>
+                <option value="join">JOIN</option>
+                <option value="order_by">ORDER BY</option>
+                <option value="where">WHERE</option>
+            </select>
             <button type="submit">Generate Sample Queries</button>
         </form>
         <div id="sample-queries">

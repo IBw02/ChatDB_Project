@@ -431,37 +431,78 @@ def get_tables():
 
 @app.route('/generate_sample_queries', methods=['GET'])
 def generate_sample_queries():
-    table_name = request.args.get('table_name')  # 获取表名参数
+    table_name = request.args.get('table_name')
     if not table_name:
         return jsonify({"error": "Table name is required"}), 400
 
-    connection = None
     try:
-        connection = connect_to_sql('project_db')  # 使用固定数据库
+        connection = connect_to_sql('project_db')
         with connection.cursor() as cursor:
-            # 获取列信息
+            # 获取表结构
             cursor.execute(f"DESCRIBE {table_name}")
-            columns = [row[0] for row in cursor.fetchall()]  # 提取列名
+            columns = cursor.fetchall()
+            column_names = [row[0] for row in columns]
+            numeric_columns = [col[0] for col in columns if col[1].startswith("int") or col[1].startswith("float")]
 
-            if not columns:
-                return jsonify({"error": f"No columns found in table '{table_name}'"}), 400
+            if not column_names or not numeric_columns:
+                return jsonify({"error": f"Table '{table_name}' must have at least one numeric and one categorical column."})
 
-            # 随机生成样例查询
-            col1 = random.choice(columns)  # 随机选择一列
-            col2 = random.choice(columns) if len(columns) > 1 else col1
+            col1 = random.choice(column_names)  # 随机选择分类字段
+            col2 = random.choice(numeric_columns)  # 随机选择数值字段
+
+            # 增加 WHERE 的示例
+            where_value = 50  # 模拟一个值
             queries = [
-                f"SELECT * FROM {table_name} LIMIT 5;",
-                f"SELECT COUNT(*) FROM {table_name};",
-                f"SELECT {col1}, COUNT(*) FROM {table_name} GROUP BY {col1};",
-                f"SELECT {col1}, {col2} FROM {table_name} WHERE {col1} IS NOT NULL LIMIT 10;",
-                f"SELECT {col1}, SUM({col2}) AS total FROM {table_name} GROUP BY {col1};"
+                f"SELECT {col1}, SUM({col2}) AS total FROM {table_name} WHERE {col2} > {where_value} GROUP BY {col1};",
+                f"SELECT {col1}, COUNT(*) AS count FROM {table_name} WHERE {col2} < {where_value} GROUP BY {col1} ORDER BY count DESC;",
+                f"SELECT {col1}, AVG({col2}) AS avg_value FROM {table_name} WHERE {col2} BETWEEN 10 AND 100 GROUP BY {col1};",
+                f"SELECT {col1}, {col2} FROM {table_name} WHERE {col2} = {where_value} LIMIT 10;",
             ]
-            return jsonify({"sample_queries": random.sample(queries, 3)})
+
+            return jsonify({"sample_queries": random.sample(queries, min(3, len(queries)))})
     except Exception as e:
         return jsonify({"error": f"Failed to generate sample queries: {str(e)}"}), 500
-    finally:
-        if connection:
-            connection.close()
+
+
+@app.route('/generate_construct_queries', methods=['GET'])
+def generate_construct_queries():
+    table_name = request.args.get('table_name')
+    construct = request.args.get('construct')  # 获取查询类型
+
+    if not table_name or not construct:
+        return jsonify({"error": "Table name and construct type are required"}), 400
+
+    try:
+        connection = connect_to_sql('project_db')
+        with connection.cursor() as cursor:
+            cursor.execute(f"DESCRIBE {table_name}")
+            columns = cursor.fetchall()
+            column_names = [row[0] for row in columns]
+            numeric_columns = [col[0] for col in columns if col[1].startswith("int") or col[1].startswith("float")]
+
+            if not column_names or not numeric_columns:
+                return jsonify({"error": f"Table '{table_name}' must have at least one numeric and one categorical column."})
+
+            col1 = random.choice(column_names)  # 随机选择一列
+            col2 = random.choice(numeric_columns)  # 随机选择数值字段
+
+            if construct == 'group_by':
+                query = f"SELECT {col1}, SUM({col2}) AS total FROM {table_name} GROUP BY {col1};"
+            elif construct == 'having':
+                query = f"SELECT {col1}, AVG({col2}) AS avg_value FROM {table_name} GROUP BY {col1} HAVING avg_value > 100;"
+            elif construct == 'join':
+                query = f"SELECT a.{col1}, b.{col2} FROM {table_name} a JOIN OtherTable b ON a.id = b.id LIMIT 5;"
+            elif construct == 'order_by':
+                query = f"SELECT {col1}, {col2} FROM {table_name} ORDER BY {col2} DESC LIMIT 10;"
+            elif construct == 'where':  # 新增 WHERE 逻辑
+                query = f"SELECT {col1}, {col2} FROM {table_name} WHERE {col2} > 50 LIMIT 10;"
+            else:
+                return jsonify({"error": "Invalid construct type"}), 400
+
+            return jsonify({"query": query})
+    except Exception as e:
+        return jsonify({"error": f"Failed to generate construct query: {str(e)}"}), 500
+
 
 
 if __name__ == '__main__':
