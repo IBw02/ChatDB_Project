@@ -1,9 +1,11 @@
 import os
 import csv
 import pymysql 
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, Response
+from bson import json_util
 import pandas as pd
 import random
+from pymongo import MongoClient
 
 app = Flask(__name__)
 UPLOAD_FOLDER = "./uploads"  # 上传文件存储目录
@@ -244,38 +246,74 @@ def home():
 @app.route('/execute_query', methods=['POST'])
 def execute_query():
     """
-    执行自然语言或直接 SQL 查询，并返回 JSON 结果
+    执行自然语言或直接 SQL 查询，并返回 JSON 结果，包括自然语言解析
     """
-    user_input = request.json.get('query', '')
+    user_input = request.json.get('query', '').strip()
     if not user_input:
         return jsonify({"error": "Query cannot be empty"})
 
-    # 判断输入是否为直接 SQL 命令
-    if user_input.strip().lower().startswith(("select", "insert", "update", "delete")):
-        try:
-            result = execute_sql_query(user_input)  # 执行 SQL 查询
+    try:
+        # 判断是否为直接 SQL 命令
+        if user_input.lower().startswith(("select", "insert", "update", "delete")):
+            result = execute_sql_query(user_input)  # 执行直接 SQL 查询
+            description = generate_query_description(user_input)  # 自动生成描述
             return jsonify({
-                "description": "Direct SQL query executed",
+                "description": description,
                 "query": user_input,
                 "result": result
             })
-        except Exception as e:
-            return jsonify({"error": f"SQL Error: {str(e)}"})
-
-    # 如果不是 SQL 命令，解析为自然语言查询
-    parsed_query = parse_nlp_query_with_templates(user_input)
-    if "error" in parsed_query:
-        return jsonify(parsed_query)
-
-    try:
-        result = execute_sql_query(parsed_query["query"])  # 执行解析后的 SQL 查询
-        return jsonify({
-            "description": parsed_query["description"],
-            "query": parsed_query["query"],
-            "result": result
-        })
+        else:
+            # 如果是自然语言查询，解析为 SQL
+            parsed_query = parse_nlp_query_with_templates(user_input)
+            if "error" in parsed_query:
+                return jsonify(parsed_query)  # 如果解析失败，返回错误信息
+            
+            # 执行解析后的 SQL 查询
+            result = execute_sql_query(parsed_query["query"])
+            description = parsed_query.get("description", generate_query_description(parsed_query["query"]))
+            return jsonify({
+                "description": description,
+                "query": parsed_query["query"],
+                "result": result
+            })
     except Exception as e:
         return jsonify({"error": f"SQL Error: {str(e)}"})
+
+def generate_query_description(query):
+    """
+    根据 SQL 查询生成自然语言描述
+    """
+    query_upper = query.upper()
+    description_parts = []
+
+    # 检查 SELECT 子句
+    if "SELECT" in query_upper:
+        select_clause = query.split("FROM")[0].replace("SELECT", "").strip()
+        description_parts.append(f"The query selects: {select_clause}")
+
+    # 检查 FROM 子句
+    if "FROM" in query_upper:
+        from_clause = query.split("FROM")[1].split("WHERE")[0].split("GROUP BY")[0].split("ORDER BY")[0].strip()
+        description_parts.append(f"from the table: {from_clause}")
+
+    # 检查 WHERE 条件
+    if "WHERE" in query_upper:
+        # 提取 WHERE 子句并确保条件完整
+        where_part = query_upper.split("WHERE")[1]
+        where_clause = where_part.split("GROUP BY")[0].split("ORDER BY")[0].strip()
+        description_parts.append(f"where: {where_clause}")
+
+    # 检查 GROUP BY 子句
+    if "GROUP BY" in query_upper:
+        group_by_clause = query.split("GROUP BY")[1].split("ORDER BY")[0].strip()
+        description_parts.append(f"grouping by: {group_by_clause}")
+
+    # 检查 ORDER BY 子句
+    if "ORDER BY" in query_upper:
+        order_by_clause = query.split("ORDER BY")[1].strip()
+        description_parts.append(f"ordered by: {order_by_clause}")
+
+    return ". ".join(description_parts) if description_parts else "This is a standard SQL query."
 
 @app.route('/list_files', methods=['GET'])
 def list_files():
@@ -503,7 +541,156 @@ def generate_construct_queries():
     except Exception as e:
         return jsonify({"error": f"Failed to generate construct query: {str(e)}"}), 500
 
+def connect_to_mongo():
+    client = MongoClient(
+        host='13.57.241.139',  # Replace with your EC2 public IP address
+        port=27017  # MongoDB default port
+    )
+    db = client['orders']  # Replace with your MongoDB database name
+    return db
 
+@app.route('/mongo/explore', methods=['GET'])
+def explore_database():
+    db = connect_to_mongo()
+    collections = db.list_collection_names()
+    collections_info = {}
+
+    for collection_name in collections:
+        collection = db[collection_name]
+        sample_data = collection.find_one()  # Get one document as a sample
+        if sample_data:
+            fields = sample_data.keys()
+            collections_info[collection_name] = {
+                "fields": list(fields),
+                "sample_data": json_util.loads(json_util.dumps(sample_data))
+            }
+        else:
+            collections_info[collection_name] = {
+                "fields": [],
+                "sample_data": "No data available"
+            }
+
+    return Response(json_util.dumps(collections_info), mimetype='application/json')
+
+@app.route('/mongo/sample_queries', methods=['GET'])
+def get_sample_queries():
+    db = connect_to_mongo()
+    collections = db.list_collection_names()
+
+    if not collections:
+        return jsonify({"error": "No collections available in the database."}), 400
+
+    query_patterns = [
+        {
+            "description": "Find documents with a condition on a specific field.",
+            "query": lambda collection, field: f"db.{collection}.find({{{field}: {{'$gt': <value>}}}})"
+        },
+        {
+            "description": "Aggregation example: group by a field and count documents.",
+            "query": lambda collection, field: f"db.{collection}.aggregate([{{'$group': {{'_id': '${field}', 'count': {{'$sum': 1}}}}}}])"
+        },
+        {
+            "description": "Find documents sorted by a field in descending order.",
+            "query": lambda collection, field: f"db.{collection}.find().sort({{{field}: -1}})"  # Sort descending
+        }
+    ]
+
+    selected_queries = random.sample(query_patterns, min(3, len(query_patterns)))
+    sample_queries = []
+
+    for query_info in selected_queries:
+        collection = random.choice(collections)
+        sample_data = db[collection].find_one()
+
+        if sample_data:
+            fields = list(sample_data.keys())
+            field = random.choice(fields)
+            sample_queries.append({
+                "description": query_info["description"],
+                "query": query_info["query"](collection, field)
+            })
+
+    return jsonify(sample_queries)
+
+@app.route('/mongo/natural_language_query', methods=['POST'])
+def execute_mongo_query():
+    try:
+        # 获取 JSON 请求体
+        data = request.get_json()
+        print("Received Data:", data)  # 调试信息
+
+        # 验证参数是否存在
+        query = data.get('query')
+        collection_name = data.get('collection')
+
+        if not query or not collection_name:
+            return jsonify({"error": "Both 'query' and 'collection' are required"}), 400
+
+        # 转换查询字符串为字典（如果需要）
+        if isinstance(query, str):
+            query = eval(query)  # 将字符串形式的查询转换为字典，需确保安全性
+
+        # 连接 MongoDB 并执行查询
+        db = connect_to_mongo()
+        collection = db[collection_name]
+
+        result = list(collection.find(query).sort("_id", -1))  # 按字段排序
+        return jsonify({"result": result})
+    except Exception as e:
+        print("Error:", str(e))
+        return jsonify({"error": str(e)}), 500
+
+
+
+
+def generate_query(query):
+    action, collection = parse_query(query)
+    
+    if not action or not collection:
+        return {"error": "Could not determine action or target collection from the input."}
+
+    # 根据 action 和 collection 生成查询
+    if action == 'find':
+        mongo_query = f"db.{collection}.find({{}}).limit(10)"
+    elif action == 'count':
+        mongo_query = f"db.{collection}.countDocuments({{}})"
+    elif action == 'sort':
+        mongo_query = f"db.{collection}.find({{}}).sort({{ 'totalAmount': 1 }}).limit(10)"
+    elif action == 'group':
+        mongo_query = f"db.{collection}.aggregate([{{ '$group': {{ '_id': '$category', 'total': {{ '$sum': 1 }} }} }}])"
+    else:
+        mongo_query = {"error": "Unknown action."}
+
+    return mongo_query
+
+def parse_query(query):
+    query = query.lower()
+
+    collections = ['products', 'orders', 'reviews', 'categories', 'users']
+    actions = {
+        'find': ['find', 'list', 'show'],
+        'count': ['count', 'how many'],
+        'sort': ['sort', 'order by'],
+        'group': ['group by', 'aggregate'],
+    }
+
+    collection = None
+    for col in collections:
+        if col in query:
+            collection = col
+            break
+
+    action = None
+    for key, keywords in actions.items():
+        for keyword in keywords:
+            if keyword in query:
+                action = key
+                break
+
+    if collection and action:
+        return action, collection
+    else:
+        return None, None
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5000, debug=True)

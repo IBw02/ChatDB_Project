@@ -11,6 +11,15 @@ document.addEventListener("DOMContentLoaded", () => {
     const sampleQueriesDiv = document.getElementById("sample-queries");
     const constructSelect = document.getElementById("construct-select");  // 新增选择语言结构的下拉菜单
     const generateConstructButton = document.getElementById("generate-construct");
+    
+    toggleModeButton.addEventListener("click", () => {
+        isSQLMode = !isSQLMode; // 切换模式
+        currentMode.textContent = `Mode: ${isSQLMode ? "SQL" : "NoSQL"}`;
+        toggleModeButton.textContent = `Switch to ${isSQLMode ? "NoSQL" : "SQL"}`;
+
+        // 动态加载模式特定的数据（表名或集合）
+        loadTableNames();
+    });
 
     // 监听表单切换
     sampleTableSelect.addEventListener("change", (event) => {
@@ -132,8 +141,9 @@ document.addEventListener("DOMContentLoaded", () => {
      * 动态加载表名逻辑
      */
     const loadTableNames = async () => {
+        const endpoint = isSQLMode ? "/get_tables" : "/mongo/explore"; // 根据模式选择 API
         try {
-            const response = await fetch("/get_tables");
+            const response = await fetch(endpoint);
             const data = await response.json();
 
             if (data.error) {
@@ -144,28 +154,26 @@ document.addEventListener("DOMContentLoaded", () => {
             const sampleTableSelect = document.getElementById("sample-table");
             sampleTableSelect.innerHTML = ""; // 清空旧选项
 
-            // 动态填充表名
-            data.tables.forEach((table) => {
+            const items = isSQLMode ? data.tables : Object.keys(data); // SQL: tables, NoSQL: collections
+            items.forEach((item) => {
                 const option = document.createElement("option");
-                option.value = table;
-                option.textContent = table;
+                option.value = item;
+                option.textContent = item;
                 sampleTableSelect.appendChild(option);
             });
-
-            // 默认加载第一个表的样例查询
-            if (data.tables.length > 0) {
-                loadSampleQueries(data.tables[0]);
-            }
         } catch (error) {
-            console.error("Error loading table names:", error);
-            alert("Error: Unable to load table names.");
+            console.error(`Error loading ${isSQLMode ? "tables" : "collections"}:`, error);
         }
     };
 
 
     const loadSampleQueries = async (tableName) => {
+        const endpoint = isSQLMode
+            ? `/generate_sample_queries?table_name=${tableName}`
+            : `/mongo/sample_queries`; // MongoDB 样例查询
+
         try {
-            const response = await fetch(`/generate_sample_queries?table_name=${tableName}`);
+            const response = await fetch(endpoint);
             const data = await response.json();
 
             if (data.error) {
@@ -176,17 +184,27 @@ document.addEventListener("DOMContentLoaded", () => {
             const sampleQueriesDiv = document.getElementById("sample-queries");
             sampleQueriesDiv.innerHTML = ""; // 清空旧样例查询
 
-            // 显示新的样例查询
-            data.sample_queries.forEach((query) => {
-                const queryDiv = document.createElement("div");
-                queryDiv.textContent = query;
-                sampleQueriesDiv.appendChild(queryDiv);
-            });
+            if (isSQLMode) {
+                // 显示 SQL 样例查询
+                data.sample_queries.forEach((query) => {
+                    const queryDiv = document.createElement("div");
+                    queryDiv.textContent = query;
+                    sampleQueriesDiv.appendChild(queryDiv);
+                });
+            } else {
+                // 显示 MongoDB 样例查询
+                data.forEach((query) => {
+                    const queryDiv = document.createElement("div");
+                    queryDiv.textContent = `${query.description}: ${query.query}`;
+                    sampleQueriesDiv.appendChild(queryDiv);
+                });
+            }
         } catch (error) {
             console.error("Error loading sample queries:", error);
             alert("Error: Unable to generate sample queries.");
         }
     };
+
 
 
     // 监听下拉菜单切换事件
@@ -309,15 +327,6 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
     /**
-     * 切换模式逻辑
-     */
-    toggleModeButton.addEventListener("click", () => {
-        isSQLMode = !isSQLMode; // 切换模式
-        currentMode.textContent = `Mode: ${isSQLMode ? "SQL" : "NoSQL"}`;
-        toggleModeButton.textContent = `Switch to ${isSQLMode ? "NoSQL" : "SQL"}`;
-    });
-
-    /**
      * 处理用户输入和服务器交互
      */
     chatForm.addEventListener("submit", async (e) => {
@@ -330,7 +339,7 @@ document.addEventListener("DOMContentLoaded", () => {
         userInput.value = "";
 
         // 根据当前模式选择 API
-        const endpoint = isSQLMode ? "/execute_query" : "/execute_nosql_query";
+        const endpoint = isSQLMode ? "/execute_query" : "/mongo/natural_language_query";
 
         try {
             const response = await fetch(endpoint, {
@@ -344,7 +353,13 @@ document.addEventListener("DOMContentLoaded", () => {
             if (data.error) {
                 addMessage(`Error: ${data.error}`, false);
             } else {
+                // 显示自然语言描述
+                addMessage(`Description: ${data.description}`, false);
+
+                // 显示查询内容
                 addMessage(`Query: ${data.query}`, false);
+
+                // 显示查询结果
                 if (Array.isArray(data.result) && data.result.length > 0) {
                     addMessage(data.result, false); // 渲染为表格
                 } else {
@@ -355,6 +370,7 @@ document.addEventListener("DOMContentLoaded", () => {
             addMessage("Error: Unable to connect to the server.", false);
         }
     });
+
         // 监听生成特定语言结构查询的点击事件
     generateConstructButton.addEventListener("click", async () => {
         const tableName = sampleTableSelect.value;
@@ -380,19 +396,23 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    document.getElementById("sample-query-form").addEventListener("submit", async (event) => {
-        event.preventDefault();
+    document.getElementById("sample-query-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
 
         const tableName = document.getElementById("sample-table").value;
-        const queryType = document.getElementById("construct-select").value;
+        const construct = document.getElementById("construct-select").value;
 
-        if (!tableName || !queryType) {
-            alert("Please select a table and a query type.");
+        if (!tableName || !construct) {
+            alert("Please select a table/collection and a query type.");
             return;
         }
 
+        const endpoint = isSQLMode
+            ? `/generate_construct_queries?table_name=${tableName}&construct=${construct}`
+            : `/mongo/sample_queries`; // MongoDB 暂无构造逻辑，调用示例查询
+
         try {
-            const response = await fetch(`/generate_construct_queries?table_name=${tableName}&construct=${queryType}`);
+            const response = await fetch(endpoint);
             const data = await response.json();
 
             const sampleQueriesDiv = document.getElementById("sample-queries");
@@ -400,12 +420,57 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (data.error) {
                 sampleQueriesDiv.innerHTML = `<p>Error: ${data.error}</p>`;
-            } else {
+            } else if (isSQLMode) {
                 sampleQueriesDiv.innerHTML = `<pre>${data.query}</pre>`;
+            } else {
+                data.forEach((query) => {
+                    const queryDiv = document.createElement("div");
+                    queryDiv.textContent = `${query.description}: ${query.query}`;
+                    sampleQueriesDiv.appendChild(queryDiv);
+                });
             }
         } catch (error) {
-            console.error("Error fetching construct query:", error);
+            console.error("Error fetching sample queries:", error);
         }
     });
+
+    document.getElementById("chat-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const userMessage = document.getElementById("user-input").value.trim(); // 获取用户输入
+        const selectedCollection = document.getElementById("sample-table").value; // 获取选中的集合名
+
+        if (!userMessage || !selectedCollection) {
+            alert("Please enter a query and select a collection.");
+            return;
+        }
+
+        console.log("Query:", userMessage);
+        console.log("Collection:", selectedCollection);
+
+        const endpoint = "/mongo/natural_language_query";
+        try {
+            const response = await fetch(endpoint, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    query: userMessage, // 自然语言或 MongoDB 查询
+                    collection: selectedCollection, // 集合名
+                }),
+            });
+
+            const data = await response.json();
+
+            if (data.error) {
+                alert(`Error: ${data.error}`);
+            } else {
+                console.log("Response:", data);
+            }
+        } catch (error) {
+            console.error("Error connecting to server:", error);
+        }
+    });
+
+
+
 
 });
