@@ -1,136 +1,143 @@
+```markdown
+# ChatDB: Interactive Database Querying Application
 
-# ChatDB Project
-
-## Overview
-
-The ChatDB Project is a web-based application that allows users to interact with a database using both SQL queries (Custom Query) and Natural Language Queries (NLP Query). This project bridges the gap between technical SQL knowledge and user-friendly natural language processing, providing an intuitive way to explore and analyze data.
+ChatDB is a Flask-based web application that enables users to interact with databases using natural language or structured queries. The application supports both SQL and NoSQL databases, with features for exploring databases, generating sample queries, uploading data, and executing queries dynamically.
 
 ---
 
 ## Features
-
-- **Custom Query**: Execute direct SQL queries on the database.
-- **Natural Language Query**: Use natural language to generate SQL queries dynamically.
-- **Database Integration**: Supports both local and remote MySQL databases.
-- **Interactive UI**: User-friendly interface to input queries and view results.
-- **Error Handling**: Comprehensive error handling with descriptive feedback.
-- **Example Queries**: Includes predefined examples for both query types.
-
----
-
-## Requirements
-
-- Python 3.8 or higher
-- Flask
-- pymysql
-- A MySQL database (local or hosted on EC2)
-- Frontend: HTML, CSS (Bootstrap), JavaScript
+- **Explore Databases**: View available tables and their attributes in a selected database.
+- **Generate Sample Queries**: Dynamically create example queries, including aggregation, filtering, sorting, and `JOIN`.
+- **Natural Language Queries**: Parse user input to generate and execute SQL queries.
+- **Data Upload**: Upload CSV files to create or update tables in the database.
+- **SQL/NoSQL Toggle**: Support switching between SQL and NoSQL databases (MongoDB support planned).
+- **Interactive Web Interface**: User-friendly interface built with HTML, CSS, and JavaScript.
 
 ---
 
-## Setup Instructions
-
-### 1. Clone the repository
-```bash
-git clone <repository_url>
-cd ChatDB_Project
+## Project Structure
 ```
 
-### 2. Install dependencies
-```bash
-pip install -r requirements.txt
+├── app.py                # Main Flask application
+├── data/                 # Directory for storing database-related files (if any)
+├── static/
+│   ├── script.js         # Frontend logic for handling user interactions
+│   ├── style.css         # CSS file for styling the application
+├── templates/
+│   ├── index.html        # Main HTML file for rendering the web interface
+├── uploads/              # Directory for storing uploaded files
+├── requirements.txt      # Python dependencies
+├── README.md             # Project documentation (this file)
+└── __pycache__/          # Python cache directory
+
 ```
 
-### 3. Configure the database
-Update the database connection details in `app.py`:
-```python
-def connect_to_remote_db():
-    return pymysql.connect(
-        host="your-database-host",
-        user="your-database-user",
-        password="your-database-password",
-        database="your-database-name",
-        charset="utf8mb4",
-        cursorclass=pymysql.cursors.DictCursor,
-    )
-```
+---
 
-### 4. Start the Flask application
-```bash
-python app.py
-```
+## Installation
 
-### 5. Access the application
-Open your browser and navigate to:
-```
-http://127.0.0.1:5000
-```
+### Prerequisites
+- Python 3.10 or later
+- MySQL server
+- (Optional) MongoDB for NoSQL support
+
+### Setup Instructions
+1. Clone the repository:
+   ```bash
+   git clone <repository-url>
+   cd <repository-directory>
+   ```
+
+2. Create and activate a Python virtual environment:
+
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+
+3. Install dependencies:
+
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. Configure the database:
+   - Update the database connection details in `app.py` (e.g., `host`, `user`, `password`, and `database`).
+   - Ensure the database schema matches the tables described in `DESCRIBE` commands.
+
+5. Run the application:
+
+   ```bash
+   python app.py
+   ```
+
+6. Access the application:
+   Open `http://127.0.0.1:5000` in your web browser.
 
 ---
 
 ## Usage
 
-### **Custom Query**
-1. Go to the **Custom Query** section.
-2. Enter a valid SQL query (e.g., `SELECT * FROM amazon_products LIMIT 10;`).
-3. Click **Run Query**.
-4. View the results on the same page.
+### 1. Explore Databases
 
-### **Natural Language Query**
-1. Go to the **Natural Language Query** section.
-2. Enter a query in natural language (e.g., `Find products with price below 300 and rating above 4.`).
-3. Click **Run Query**.
-4. View the dynamically generated SQL and the results on the next page.
+- View a list of available tables in the database.
+- Select a table to view its structure and generate queries.
 
----
+### 2. Generate Sample Queries
 
-## Example Queries
+- Choose a table and generate dynamic SQL queries, including `JOIN`, `GROUP BY`, and `ORDER BY`.
 
-### **Custom Query Examples**
-- `SELECT * FROM amazon_products LIMIT 10;`
-- `SELECT category, AVG(rating) AS avg_rating FROM amazon_products GROUP BY category ORDER BY avg_rating DESC LIMIT 5;`
-- `SELECT product_name, discounted_price FROM amazon_products WHERE discounted_price < 300 ORDER BY discounted_price ASC;`
+### 3. Execute Natural Language Queries
 
-### **Natural Language Query Examples**
-- `Show top 10 products.`
-- `Find products with price below 300 and rating above 4.`
-- `What is the average rating for each category?`
-- `Show the most discounted products in Computers.`
+- Enter queries like "Show total sales by product category" to automatically generate and execute SQL.
+
+### 4. Upload Data
+
+- Upload CSV files to create or update tables.
 
 ---
 
-## Troubleshooting
+## Development
 
-### Common Issues
-- **Database connection error**: Ensure the database credentials in `app.py` are correct.
-- **Natural Language Query not recognized**: Ensure the input follows supported query patterns (see Example Queries).
-- **Missing dependencies**: Run `pip install -r requirements.txt` to install all required libraries.
+### File Descriptions
 
----
+- __`app.py`__: Backend logic for handling routes, database interactions, and query execution.
+- __`static/script.js`__: Frontend script for handling UI events and AJAX calls.
+- __`static/style.css`__: CSS for styling the application.
+- __`templates/index.html`__: HTML template for the web interface.
+- __`uploads/`__: Directory for storing uploaded files.
 
-## Project Structure
+### Endpoints
 
-```
-ChatDB_Project/
-├── app.py             # Main application script
-├── templates/         # HTML templates (index, results, error pages)
-│   ├── index.html
-│   ├── results.html
-│   └── error.html
-├── static/            # Static files (CSS, JS, etc.)
-├── requirements.txt   # List of dependencies
-├── README.md          # Project documentation
-```
+- `/`: Home page for interacting with the database.
+- `/get_tables`: Fetch available tables.
+- `/generate_sample_queries`: Generate SQL queries dynamically.
+- `/upload_file`: Upload CSV files to the database.
+- `/execute_query`: Execute SQL queries or natural language queries.
 
 ---
 
-## Contributions
+## Future Improvements
 
-If you have suggestions or improvements, feel free to create a pull request or raise an issue.
+- Add NoSQL (MongoDB) support.
+- Enhance natural language processing for more complex queries.
+- Improve UI with advanced interactivity and feedback.
 
 ---
 
-## Contact
+## License
 
-For any issues or questions, please contact the project team:
-- **Wayne Wang**: waynewang229@gmail.com
+This project is open-source and available under the MIT License.
+
+---
+
+## Authors
+
+- __Your Name__ (Primary Developer)
+
+---
+
+## Acknowledgments
+
+- Instructor and course materials from DSCI 551.
+- Libraries: Flask, PyMySQL, Pandas, and others listed in `requirements.txt`.

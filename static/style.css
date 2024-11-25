@@ -1,0 +1,117 @@
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f9f9f9;
+    margin: 0;
+    padding: 20px;
+    /* 添加页面边距，防止内容贴边 */
+    box-sizing: border-box;
+}
+
+#chat-container {
+    width: 80%;
+    /* 页面宽度的 80% */
+    max-width: 1200px;
+    /* 最大宽度 */
+    height: 80vh;
+    /* 页面高度的 80% */
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    /* 确保聊天框和输入框垂直布局 */
+    margin: auto;
+    position: relative;
+    /* 保持整体布局居中 */
+}
+
+h1 {
+    text-align: center;
+    background: #007BFF;
+    color: white;
+    margin: 0;
+    padding: 15px;
+}
+
+#chat-box {
+    flex: 1;
+    /* 动态扩展聊天内容区域 */
+    padding: 15px;
+    overflow-y: auto;
+    /* 允许滚动以查看历史记录 */
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    /* 消息间距 */
+    background-color: #f9f9f9;
+    /* 聊天框背景色 */
+    border-bottom: 1px solid #ddd;
+    /* 分隔聊天框和输入框 */
+}
+
+/* 消息框样式 */
+.message {
+    max-width: 90%;
+    /* 限制消息宽度 */
+    padding: 10px;
+    border-radius: 5px;
+    word-wrap: break-word;
+    /* 长词换行 */
+    overflow-wrap: break-word;
+    /* 兼容旧版浏览器 */
+    white-space: pre-wrap;
+    /* 保留换行符 */
+    background: #f1f1f1;
+    margin: 5px 0;
+    /* 消息之间的间距 */
+}
+
+.user-message {
+    align-self: flex-end;
+    background: #007BFF;
+    color: white;
+}
+
+.bot-message {
+    align-self: flex-start;
+    background: #f1f1f1;
+    color: black;
+}
+
+/* 输入框部分 */
+#chat-form {
+    position: sticky;
+    /* 固定输入框位置 */
+    bottom: 0;
+    /* 固定在容器底部 */
+    display: flex;
+    border-top: 1px solid #ddd;
+    padding: 10px;
+    background: white;
+    /* 背景颜色与聊天框一致 */
+    z-index: 10;
+    /* 保证输入框不会被其他内容遮盖 */
+}
+
+#user-input {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 16px;
+}
+
+button {
+    background: #007BFF;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    margin-left: 5px;
+    cursor: pointer;
+    border-radius: 5px;
+    font-size: 16px;
+}
+
+button:hover {
+    background: #0056b3;
+}
