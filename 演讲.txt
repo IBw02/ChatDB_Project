@@ -1,0 +1,183 @@
+演讲测试代码：
+
+#Custom Query Test SQL Statements
+1. SELECT * FROM amazon_products LIMIT 10;
+2. SELECT category, AVG(rating) AS avg_rating FROM amazon_products GROUP BY category ORDER BY avg_rating DESC LIMIT 5;
+3. SELECT product_name, rating FROM amazon_products WHERE rating > 4.5 ORDER BY rating DESC LIMIT 10;
+4. SELECT product_name, discounted_price FROM amazon_products WHERE discounted_price < 300 ORDER BY discounted_price ASC;
+5. SELECT category, SUM(actual_price - discounted_price) AS total_discount FROM amazon_products GROUP BY category ORDER BY total_discount DESC LIMIT 5;
+6. SELECT product_name, discounted_price, rating FROM amazon_products WHERE discounted_price < 300 AND rating > 4 ORDER BY discounted_price ASC;
+
+# Updated Natural Language Query Examples
+1. Show top 10 products.
+2. Find products with rating higher than 4.5.
+3. What is the average rating for each category?
+4. Show products priced below 300.
+5. List the most popular products.
+6. Show top categories by discount.
+7. Find products with the highest ratings.
+8. Show categories with the most products.
+9. Find products with price below 300 and rating above 4.
+10. Show top 5 categories with highest average ratings.
+11. Show products with rating above 4.5 in the Electronics category.
+12. Show the most discounted products in Computers.
+
+
+########################################################################################################################################################################################################################################################
+
+### 项目主要功能概述
+
+这个项目是一个基于 **Flask** 构建的**亚马逊数据查询系统**，用户可以通过 **预定义查询**、**自定义 SQL 查询** 和 **自然语言查询（NLP）** 的方式，对存储在 **MySQL 数据库** 中的亚马逊产品数据进行查询和分析。
+
+主要功能包括：
+1. **预定义查询**：通过选择常见查询（如“最高折扣产品”、“热销产品”等），快速获取分析结果。
+2. **自定义查询**：用户可以直接输入 SQL 语句，对数据库执行复杂查询。
+3. **自然语言查询**：用户输入类似自然语言的语句，系统解析后自动转换为 SQL 查询并返回结果。
+4. **数据展示**：查询结果通过前端界面友好地展示，支持分页和排序。
+5. **后端安全性**：防止 SQL 注入攻击，确保数据访问安全。
+
+---
+
+### **代码主要部分及功能解析**
+
+#### **1. `app.py`（后端主程序）**
+这是项目的核心文件，主要负责处理用户请求、连接数据库、解析查询以及返回结果。
+
+1. **`@app.route('/')`**
+   - **功能**：加载主页 `index.html`，展示查询表单。
+   - **作用**：为用户提供一个入口，选择查询方式（预定义、自定义、NLP）。
+
+2. **`@app.route('/predefined_query')`**
+   - **功能**：处理预定义查询请求。
+   - **代码解析**：
+     - 根据用户选择的查询类型，执行对应的 SQL 语句。
+     - 返回查询结果或错误信息。
+
+3. **`@app.route('/custom_query')`**
+   - **功能**：执行用户输入的 SQL 查询。
+   - **代码解析**：
+     - 获取用户输入的 SQL。
+     - 验证语句安全性，防止 SQL 注入攻击。
+     - 连接数据库并执行查询，将结果返回给前端。
+
+4. **`@app.route('/nlp_query')`**
+   - **功能**：解析用户输入的自然语言查询，将其转换为 SQL 查询。
+   - **代码解析**：
+     - 使用简单的 NLP 技术（如分词、关键字匹配）解析用户输入。
+     - 针对不同查询需求生成 SQL 语句（如“最高评分类别”、“价格低于 X 的产品”）。
+     - 连接数据库，执行生成的 SQL 查询，并返回结果。
+
+5. **`connect_to_remote_db()`**
+   - **功能**：负责连接到远程 MySQL 数据库。
+   - **作用**：为所有查询提供数据库连接。
+
+---
+
+#### **2. 前端模板文件**
+
+1. **`templates/index.html`**
+   - **功能**：提供用户交互界面，支持三种查询方式：
+     - **预定义查询**
+     - **自定义 SQL 查询**
+     - **自然语言查询**
+   - **代码解析**：
+     - 使用 HTML 和 CSS 设计表单，支持用户输入。
+     - 集成 Bootstrap 框架，增强页面美观性。
+
+2. **`templates/results.html`**
+   - **功能**：展示查询结果。
+   - **代码解析**：
+     - 动态渲染查询结果，支持分页显示。
+     - 显示查询类型和用户输入的 SQL 或自然语言。
+
+3. **`templates/error.html`**
+   - **功能**：展示错误信息。
+   - **代码解析**：
+     - 如果查询失败（如 SQL 语法错误、NLP 无法解析），展示具体错误信息。
+
+---
+
+#### **3. 数据库**
+项目使用 MySQL 数据库存储亚马逊产品数据，主要字段包括：
+- `product_id`：产品 ID。
+- `product_name`：产品名称。
+- `category`：类别。
+- `discounted_price`：折扣后的价格。
+- `actual_price`：原始价格。
+- `rating`：用户评分。
+- `rating_count`：评分数量。
+
+---
+
+#### **4. 自然语言查询解析逻辑**
+
+在 `@app.route('/nlp_query')` 中，支持的自然语言查询示例：
+1. **“Show top 5 categories with highest ratings”**
+   - 转换为 SQL：
+     ```sql
+     SELECT category, AVG(rating) AS avg_rating
+     FROM amazon_products
+     GROUP BY category
+     ORDER BY avg_rating DESC
+     LIMIT 5;
+     ```
+
+2. **“Show products with rating above 4.5”**
+   - 转换为 SQL：
+     ```sql
+     SELECT product_name, rating
+     FROM amazon_products
+     WHERE rating > 4.5
+     ORDER BY rating DESC;
+     ```
+
+3. **“List all products with price below 500”**
+   - 转换为 SQL：
+     ```sql
+     SELECT product_name, discounted_price
+     FROM amazon_products
+     WHERE discounted_price < 500
+     ORDER BY discounted_price ASC;
+     ```
+
+---
+
+#### **5. `requirements.txt`**
+包含项目的所有依赖库，确保团队成员可以快速安装必要的 Python 包。
+
+---
+
+#### **6. README.md**
+为项目提供操作说明，包括：
+- 环境搭建（安装 Python、MySQL）。
+- 运行步骤：
+  1. 克隆项目。
+  2. 安装依赖：
+     ```bash
+     pip install -r requirements.txt
+     ```
+  3. 启动 Flask 服务：
+     ```bash
+     flask run
+     ```
+- 提供测试语句示例（用于验证功能）。
+
+---
+
+### **演讲小贴士**
+1. **展示三种查询方式**：
+   - 预定义查询：快速展示结果。
+   - 自定义查询：支持复杂 SQL 分析。
+   - 自然语言查询：模拟真实用户需求。
+
+2. **强调安全性**：
+   - 提供 SQL 注入保护。
+   - 使用环境变量保护数据库凭据。
+
+3. **展示前后端联动**：
+   - 强调 Flask 后端如何处理查询请求。
+   - 通过前端页面动态展示结果，提升用户体验。
+
+4. **未来改进方向**：
+   - 增强 NLP 功能，支持更复杂的自然语言查询。
+   - 集成更多前端功能（如结果可视化、实时更新）。
