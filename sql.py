@@ -61,8 +61,8 @@ def generate_sql_queries(connection):
     try:
         print("\nChoose a Query Type:")
         for i, pattern in enumerate(sql_query_patterns, 1):
-            print(f"{i}. {pattern['type']}")  # 显示查询类型
-        
+            print(f"{i}. {pattern['type']}")  # 仅显示查询类型
+
         query_type = input("Enter your choice (1-5): ")
 
         # 验证用户输入是否有效
@@ -88,8 +88,15 @@ def generate_sql_queries(connection):
             query_index = int(query_type) - 1
             query_info = sql_query_patterns[query_index]
 
-            # 如果是JOIN查询，随机选择两个表格和对应列
-            if 'table2' in query_info["query"].__code__.co_varnames:
+            # 动态生成 description
+            description = (
+                query_info["description"](table1, "table2")
+                if "table2" in query_info["description"].__code__.co_varnames
+                else query_info["description"](table1)
+            )
+
+            # 动态生成 SQL 查询
+            if "table2" in query_info["query"].__code__.co_varnames:
                 if len(tables) < 2:
                     print("Not enough tables available for a JOIN query.")
                     return
@@ -99,27 +106,26 @@ def generate_sql_queries(connection):
                 columns_table2 = cursor.fetchall()
                 column2 = random.choice([column[0] for column in columns_table2])
                 generated_query = query_info["query"](table1, table2, column1, column2)
-            # 如果需要两个列
-            elif 'column2' in query_info["query"].__code__.co_varnames:
+            elif "column2" in query_info["query"].__code__.co_varnames:
                 if len(column_names) < 2:
                     print("Not enough columns available for this type of query.")
                     return
                 column1, column2 = random.sample(column_names, 2)
                 generated_query = query_info["query"](table1, column1, column2)
-            # 如果只需要一个列
-            elif 'column' in query_info["query"].__code__.co_varnames:
+            elif "column" in query_info["query"].__code__.co_varnames:
                 column = random.choice(column_names)
                 generated_query = query_info["query"](table1, column)
-            # 不需要特定列
             else:
                 generated_query = query_info["query"](table1)
 
-            # 输出生成的查询
+            # 输出生成的查询和描述
             print("\nGenerated Query:")
-            print(f"  {generated_query}")
+            print(f"Description: {description}")
+            print(f"SQL Query: {generated_query}")
 
     except Exception as e:
         print(f"Error generating SQL queries: {e}")
+
 
 
 
