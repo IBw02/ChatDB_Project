@@ -40,14 +40,18 @@ git clone https://github.com/your-repo/ChatDB_Project.git
 cd ChatDB_Project
 ```
 
-### 2. Create a Virtual Environment and Install Dependencies
+### 2. Create a Virtual Environment and Install Dependencies (Optional)
 ```bash
 python -m venv venv
 source venv/bin/activate   # On Windows: venv\Scripts\activate
+```
+
+### 3. Install requirements
+```bash
 pip install -r requirements.txt
 ```
 
-### 3. Configure the Databases
+### 4. Configure the Databases
 - **SQL Database**: Update connection details in `sql.py` (e.g., host, username, password, database name).
 - **MongoDB Database**: Update connection details in `mongodb.py` (e.g., host and port).
 
