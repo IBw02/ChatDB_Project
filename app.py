@@ -16,7 +16,7 @@ if not os.path.exists(UPLOAD_FOLDER):
 def connect_to_sql(db_name='project_db'):
     try:
         connection = pymysql.connect(
-            host='54.193.110.162',  # 数据库主机
+            host='54.219.52.231',  # 数据库主机
             user='root',  # 数据库用户名
             password='Dsci-551',  # 数据库密码
             database=db_name,  # 动态选择数据库
@@ -179,13 +179,22 @@ def generate_advanced_sample_queries(table_name):
             if len(column_names) < 2 or len(numeric_columns) < 1:
                 return {"error": "Table must have at least two columns and one numeric column for complex queries"}
 
+            # 随机选择列名和动态值
+            col1 = random.choice(column_names)
+            col2 = random.choice(column_names)
+            numeric_col = random.choice(numeric_columns)
+            random_limit = random.randint(5, 20)
+            random_value = random.randint(10, 100)
+
             # 定义复杂查询模板
             queries = [
-                f"SELECT {column_names[0]}, COUNT(*) FROM {table_name} GROUP BY {column_names[0]} ORDER BY COUNT(*) DESC LIMIT 5;",
-                f"SELECT {numeric_columns[0]}, AVG({numeric_columns[0]}) AS avg_value FROM {table_name} GROUP BY {numeric_columns[0]} HAVING avg_value > 100;",
-                f"SELECT a.{column_names[0]}, b.{column_names[1]} FROM {table_name} a JOIN {table_name} b ON a.{column_names[0]} = b.{column_names[0]} LIMIT 5;",
-                f"SELECT {column_names[0]}, SUM({numeric_columns[0]}) AS total FROM {table_name} WHERE {numeric_columns[0]} > 50 GROUP BY {column_names[0]} ORDER BY total DESC;",
-                f"SELECT {column_names[0]} FROM {table_name} WHERE {column_names[1]} LIKE '%example%' LIMIT 10;"
+                f"SELECT {col1}, COUNT(*) FROM {table_name} GROUP BY {col1} ORDER BY COUNT(*) DESC LIMIT {random_limit};",
+                f"SELECT {numeric_col}, AVG({numeric_col}) AS avg_value FROM {table_name} GROUP BY {numeric_col} HAVING avg_value > {random_value};",
+                f"SELECT a.{col1}, b.{col2} FROM {table_name} a JOIN {table_name} b ON a.{col1} = b.{col1} LIMIT {random_limit};",
+                f"SELECT {col1}, SUM({numeric_col}) AS total FROM {table_name} WHERE {numeric_col} > {random_value} GROUP BY {col1} ORDER BY total DESC;",
+                f"SELECT {col1} FROM {table_name} WHERE {col2} LIKE '%example%' LIMIT {random_limit};",
+                f"SELECT DISTINCT {col1} FROM {table_name} WHERE {numeric_col} BETWEEN {random_value} AND {random_value + 50} LIMIT {random_limit};",
+                f"SELECT {col1}, {col2} FROM {table_name} WHERE {numeric_col} < {random_value} ORDER BY {col2} ASC LIMIT {random_limit};"
             ]
 
             # 返回随机选择的样例查询
@@ -194,6 +203,7 @@ def generate_advanced_sample_queries(table_name):
         return {"error": f"Failed to generate advanced sample queries: {str(e)}"}
     finally:
         connection.close()
+
 
 
 def generate_sample_query_dynamic(table_name):
@@ -283,37 +293,87 @@ def generate_query_description(query):
     """
     根据 SQL 查询生成自然语言描述
     """
-    query_upper = query.upper()
+    query = query.upper()  # 统一转换为大写
     description_parts = []
 
-    # 检查 SELECT 子句
-    if "SELECT" in query_upper:
+    # 处理 SELECT 子句
+    if "SELECT" in query:
         select_clause = query.split("FROM")[0].replace("SELECT", "").strip()
-        description_parts.append(f"The query selects: {select_clause}")
+        description_parts.append(f"The query selects the following columns: {select_clause}.")
 
-    # 检查 FROM 子句
-    if "FROM" in query_upper:
-        from_clause = query.split("FROM")[1].split("WHERE")[0].split("GROUP BY")[0].split("ORDER BY")[0].strip()
-        description_parts.append(f"from the table: {from_clause}")
+    # 处理 FROM 子句
+    if "FROM" in query:
+        from_clause = query.split("FROM")[1]
+        from_table = (
+            from_clause.split("WHERE")[0]
+            .split("GROUP BY")[0]
+            .split("ORDER BY")[0]
+            .split("LIMIT")[0]
+            .strip()
+        )
+        description_parts.append(f"It retrieves data from the table: {from_table}.")
 
-    # 检查 WHERE 条件
-    if "WHERE" in query_upper:
-        # 提取 WHERE 子句并确保条件完整
-        where_part = query_upper.split("WHERE")[1]
-        where_clause = where_part.split("GROUP BY")[0].split("ORDER BY")[0].strip()
-        description_parts.append(f"where: {where_clause}")
+    # 处理 WHERE 子句
+    if "WHERE" in query:
+        where_clause = query.split("WHERE")[1]
+        where_conditions = (
+            where_clause.split("GROUP BY")[0]
+            .split("ORDER BY")[0]
+            .split("LIMIT")[0]
+            .strip()
+        )
+        description_parts.append(f"Filter condition applied: {where_conditions}.")
 
-    # 检查 GROUP BY 子句
-    if "GROUP BY" in query_upper:
-        group_by_clause = query.split("GROUP BY")[1].split("ORDER BY")[0].strip()
-        description_parts.append(f"grouping by: {group_by_clause}")
+    # 处理 GROUP BY 子句
+    if "GROUP BY" in query:
+        group_by_clause = query.split("GROUP BY")[1]
+        group_columns = (
+            group_by_clause.split("ORDER BY")[0]
+            .split("LIMIT")[0]
+            .strip()
+        )
+        description_parts.append(f"The data is grouped by the following columns: {group_columns}.")
 
-    # 检查 ORDER BY 子句
-    if "ORDER BY" in query_upper:
-        order_by_clause = query.split("ORDER BY")[1].strip()
-        description_parts.append(f"ordered by: {order_by_clause}")
+    # 处理 HAVING 子句
+    if "HAVING" in query:
+        having_clause = query.split("HAVING")[1]
+        having_conditions = (
+            having_clause.split("ORDER BY")[0]
+            .split("LIMIT")[0]
+            .strip()
+        )
+        description_parts.append(f"Filter condition applied to grouped data: {having_conditions}.")
 
-    return ". ".join(description_parts) if description_parts else "This is a standard SQL query."
+    # 处理 ORDER BY 子句
+    if "ORDER BY" in query:
+        order_by_clause = query.split("ORDER BY")[1]
+        order_columns = (
+            order_by_clause.split("LIMIT")[0]
+            .strip()
+        )
+        description_parts.append(f"The results are ordered by: {order_columns}.")
+
+    # 处理 LIMIT 子句
+    if "LIMIT" in query:
+        limit_clause = query.split("LIMIT")[1].strip()
+        description_parts.append(f"The results are limited to {limit_clause} rows.")
+
+    # 处理 JOIN 子句
+    if "JOIN" in query:
+        join_part = query.split("JOIN")[1]
+        join_table = join_part.split("ON")[0].strip()
+        join_condition = (
+            join_part.split("ON")[1].split("WHERE")[0]
+            .split("GROUP BY")[0]
+            .split("ORDER BY")[0]
+            .split("LIMIT")[0]
+            .strip()
+        )
+        description_parts.append(f"The query joins with the table: {join_table}, using the condition: {join_condition}.")
+
+    return " ".join(description_parts)
+
+
 
 @app.route('/list_files', methods=['GET'])
 def list_files():
@@ -485,21 +545,68 @@ def generate_sample_queries():
             if not column_names or not numeric_columns:
                 return jsonify({"error": f"Table '{table_name}' must have at least one numeric and one categorical column."})
 
+            # 增加随机性逻辑
             col1 = random.choice(column_names)  # 随机选择分类字段
             col2 = random.choice(numeric_columns)  # 随机选择数值字段
 
-            # 增加 WHERE 的示例
-            where_value = 50  # 模拟一个值
-            queries = [
-                f"SELECT {col1}, SUM({col2}) AS total FROM {table_name} WHERE {col2} > {where_value} GROUP BY {col1};",
-                f"SELECT {col1}, COUNT(*) AS count FROM {table_name} WHERE {col2} < {where_value} GROUP BY {col1} ORDER BY count DESC;",
-                f"SELECT {col1}, AVG({col2}) AS avg_value FROM {table_name} WHERE {col2} BETWEEN 10 AND 100 GROUP BY {col1};",
-                f"SELECT {col1}, {col2} FROM {table_name} WHERE {col2} = {where_value} LIMIT 10;",
+            # 多样化查询模板
+            templates = [
+                f"SELECT {col1}, SUM({col2}) AS total FROM {table_name} WHERE {col2} > {random.randint(10, 100)} GROUP BY {col1};",
+                f"SELECT {col1}, AVG({col2}) AS avg_value FROM {table_name} WHERE {col2} < {random.randint(50, 200)} GROUP BY {col1} ORDER BY avg_value DESC;",
+                f"SELECT {col1}, {col2} FROM {table_name} WHERE {col2} BETWEEN {random.randint(1, 50)} AND {random.randint(51, 100)} LIMIT {random.randint(5, 20)};",
+                f"SELECT DISTINCT {col1} FROM {table_name} LIMIT {random.randint(5, 15)};",
+                f"SELECT COUNT(*) AS total_count FROM {table_name} WHERE {col2} > {random.randint(20, 80)};"
             ]
 
-            return jsonify({"sample_queries": random.sample(queries, min(3, len(queries)))})
+            # 自然语言描述模板
+            descriptions = [
+                f"Group the rows of {table_name} by {col1} and calculate the total sum of {col2} for rows where {col2} is greater than a random value.",
+                f"Group the rows of {table_name} by {col1}, calculate the average of {col2}, and order the groups in descending order of average values for rows where {col2} is less than a random value.",
+                f"Select {col1} and {col2} from {table_name} for rows where {col2} is between two random values, limiting the results to a random number of rows.",
+                f"Select distinct values of {col1} from {table_name}, limiting the results to a random number of rows.",
+                f"Count the total number of rows in {table_name} where {col2} is greater than a random value."
+            ]
+
+            # 生成查询和对应描述，并随机选择
+            queries_with_descriptions = [
+                f"{query}\n-- {description}"
+                for query, description in zip(templates, descriptions)
+            ]
+
+            # 随机抽取三条
+            selected_queries = random.sample(queries_with_descriptions, min(3, len(queries_with_descriptions)))
+
+            return jsonify({"sample_queries": selected_queries})
     except Exception as e:
         return jsonify({"error": f"Failed to generate sample queries: {str(e)}"}), 500
+
+
+@app.route('/get_table_info', methods=['GET'])
+def get_table_info():
+    table_name = request.args.get('table_name')
+    if not table_name:
+        return jsonify({"error": "Table name is required"}), 400
+
+    try:
+        connection = connect_to_sql('project_db')
+        with connection.cursor() as cursor:
+            # 获取表的列信息
+            cursor.execute(f"DESCRIBE {table_name}")
+            columns = cursor.fetchall()
+            column_details = [{"name": row[0], "type": row[1]} for row in columns]
+
+            # 获取表的示例数据
+            cursor.execute(f"SELECT * FROM {table_name} LIMIT 5")
+            sample_data = cursor.fetchall()
+            sample_columns = [desc[0] for desc in cursor.description]  # 获取列名
+            formatted_sample_data = [dict(zip(sample_columns, row)) for row in sample_data]
+
+            return jsonify({
+                "columns": column_details,
+                "sample_data": formatted_sample_data
+            })
+    except Exception as e:
+        return jsonify({"error": f"Failed to get table info: {str(e)}"}), 500
 
 
 @app.route('/generate_construct_queries', methods=['GET'])
@@ -513,6 +620,7 @@ def generate_construct_queries():
     try:
         connection = connect_to_sql('project_db')
         with connection.cursor() as cursor:
+            # 获取表结构
             cursor.execute(f"DESCRIBE {table_name}")
             columns = cursor.fetchall()
             column_names = [row[0] for row in columns]
@@ -521,25 +629,34 @@ def generate_construct_queries():
             if not column_names or not numeric_columns:
                 return jsonify({"error": f"Table '{table_name}' must have at least one numeric and one categorical column."})
 
-            col1 = random.choice(column_names)  # 随机选择一列
-            col2 = random.choice(numeric_columns)  # 随机选择数值字段
+            # 随机选择列
+            col1 = random.choice(column_names)
+            col2 = random.choice(numeric_columns)
+            random_limit = random.randint(5, 20)
+            random_value = random.randint(10, 100)
 
+            # 根据 construct 类型生成查询
             if construct == 'group_by':
                 query = f"SELECT {col1}, SUM({col2}) AS total FROM {table_name} GROUP BY {col1};"
             elif construct == 'having':
-                query = f"SELECT {col1}, AVG({col2}) AS avg_value FROM {table_name} GROUP BY {col1} HAVING avg_value > 100;"
+                query = f"SELECT {col1}, AVG({col2}) AS avg_value FROM {table_name} GROUP BY {col1} HAVING avg_value > {random_value};"
             elif construct == 'join':
-                query = f"SELECT a.{col1}, b.{col2} FROM {table_name} a JOIN OtherTable b ON a.id = b.id LIMIT 5;"
+                query = f"SELECT a.{col1}, b.{col2} FROM {table_name} a JOIN OtherTable b ON a.id = b.id LIMIT {random_limit};"
             elif construct == 'order_by':
-                query = f"SELECT {col1}, {col2} FROM {table_name} ORDER BY {col2} DESC LIMIT 10;"
-            elif construct == 'where':  # 新增 WHERE 逻辑
-                query = f"SELECT {col1}, {col2} FROM {table_name} WHERE {col2} > 50 LIMIT 10;"
+                query = f"SELECT {col1}, {col2} FROM {table_name} ORDER BY {col2} DESC LIMIT {random_limit};"
+            elif construct == 'where':
+                query = f"SELECT {col1}, {col2} FROM {table_name} WHERE {col2} > {random_value} LIMIT {random_limit};"
             else:
                 return jsonify({"error": "Invalid construct type"}), 400
 
-            return jsonify({"query": query})
+            # 生成自然语言描述
+            description = generate_query_description(query)
+
+            return jsonify({"query": query, "description": description})
     except Exception as e:
         return jsonify({"error": f"Failed to generate construct query: {str(e)}"}), 500
+
+
 
 def connect_to_mongo():
     client = MongoClient(

@@ -167,51 +167,58 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
 
+    // 更新 loadSampleQueries 函数，只显示当前选中表格的信息
     const loadSampleQueries = async (tableName) => {
+        // 判断是否为 SQL 模式，构建 API 路径
         const endpoint = isSQLMode
-            ? `/generate_sample_queries?table_name=${tableName}`
-            : `/mongo/sample_queries`; // MongoDB 样例查询
+            ? `/get_table_info?table_name=${tableName}`
+            : `/mongo/get_collection_info?collection_name=${tableName}`; // 区分 SQL 和 NoSQL
 
         try {
+            // 请求表格信息
             const response = await fetch(endpoint);
             const data = await response.json();
 
+            // 如果后端返回错误
             if (data.error) {
-                alert(`Error: ${data.error}`);
+                addMessage(`Error: ${data.error}`, false); // 显示错误消息到聊天框
                 return;
             }
 
-            const sampleQueriesDiv = document.getElementById("sample-queries");
-            sampleQueriesDiv.innerHTML = ""; // 清空旧样例查询
+            // 显示表格信息（列名和类型）
+            if (data.columns) {
+                let columnsInfo = `Selected Table: ${tableName}\nColumns:\n`;
+                data.columns.forEach((col) => {
+                    columnsInfo += `- ${col.name} (${col.type})\n`;
+                });
+                addMessage(columnsInfo, false);
+            }
 
-            if (isSQLMode) {
-                // 显示 SQL 样例查询
-                data.sample_queries.forEach((query) => {
-                    const queryDiv = document.createElement("div");
-                    queryDiv.textContent = query;
-                    sampleQueriesDiv.appendChild(queryDiv);
+            // 显示表格的示例数据
+            if (data.sample_data && data.sample_data.length > 0) {
+                let sampleDataInfo = "Sample Data:\n";
+                data.sample_data.forEach((row, index) => {
+                    sampleDataInfo += `Row ${index + 1}: ${JSON.stringify(row)}\n`;
                 });
+                addMessage(sampleDataInfo, false);
             } else {
-                // 显示 MongoDB 样例查询
-                data.forEach((query) => {
-                    const queryDiv = document.createElement("div");
-                    queryDiv.textContent = `${query.description}: ${query.query}`;
-                    sampleQueriesDiv.appendChild(queryDiv);
-                });
+                addMessage(`No sample data available for table: ${tableName}`, false);
             }
         } catch (error) {
-            console.error("Error loading sample queries:", error);
-            alert("Error: Unable to generate sample queries.");
+            console.error("Error loading table information:", error);
+            addMessage("Error: Unable to load table information.", false);
         }
     };
 
-
-
-    // 监听下拉菜单切换事件
-    document.getElementById("sample-table").addEventListener("change", (event) => {
-        const tableName = event.target.value;
-        loadSampleQueries(tableName);
+    // 监听下拉菜单切换事件，只加载当前选中表格
+    document.getElementById("sample-table").addEventListener("change", async (event) => {
+        const tableName = event.target.value; // 获取当前选中的表格名称
+        if (tableName) {
+            addMessage(`Switching to table: ${tableName}`, false); // 提示用户切换表格// 加载并显示当前表格信息
+        }
     });
+
+
 
     // 加载样例查询
     sampleQueryForm.addEventListener("submit", async (e) => {
@@ -371,6 +378,58 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
+    // 监听下拉菜单的切换
+    constructSelect.addEventListener("change", async () => {
+        const tableName = sampleTableSelect.value; // 获取当前选中的表名
+        const construct = constructSelect.value; // 获取当前选中的查询类型
+
+        if (!tableName || !construct) {
+            sampleQueriesDiv.innerHTML = `<p>Please select a table and a query type.</p>`;
+            return;
+        }
+
+        // 清空旧内容
+        sampleQueriesDiv.innerHTML = "";
+
+        const allQueries = []; // 用于存储所有查询结果
+
+        try {
+            // 每次切换时发送 3 次请求
+            for (let i = 0; i < 3; i++) {
+                const endpoint = `/generate_construct_queries?table_name=${tableName}&construct=${construct}`;
+                const response = await fetch(endpoint);
+                const data = await response.json();
+
+                // 处理后端返回结果
+                if (data.error) {
+                    allQueries.push({ query: null, description: `Error: ${data.error}` });
+                    break;
+                } else {
+                    allQueries.push({ query: data.query, description: data.description });
+                }
+            }
+
+            // 显示所有查询结果
+            allQueries.forEach((item, index) => {
+                if (item.query) {
+                    sampleQueriesDiv.innerHTML += `
+                        <pre>Query ${index + 1}: ${item.query}</pre>
+                        <p>Description: ${item.description}</p>
+                    `;
+                } else {
+                    sampleQueriesDiv.innerHTML += `
+                        <p>${item.description}</p>
+                    `;
+                }
+            });
+        } catch (error) {
+            console.error("Error generating query:", error);
+            sampleQueriesDiv.innerHTML = `<p>Failed to generate query.</p>`;
+        }
+    });
+
+
+
         // 监听生成特定语言结构查询的点击事件
     generateConstructButton.addEventListener("click", async () => {
         const tableName = sampleTableSelect.value;
@@ -433,6 +492,7 @@ document.addEventListener("DOMContentLoaded", () => {
             console.error("Error fetching sample queries:", error);
         }
     });
+
 
     document.getElementById("chat-form").addEventListener("submit", async (e) => {
         e.preventDefault();
