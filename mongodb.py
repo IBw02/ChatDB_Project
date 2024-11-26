@@ -192,11 +192,9 @@ def generate_nlp_query(query):
 # 选项 4：NLP 示例
 def nlp_examples():
     print("\nNLP Examples:")
-    print("- Find all documents in the collection")
-    print("- Retrieve unique values of a field (e.g., 'Find distinct product categories')")
-    print("- Sort orders by order date")
-    print("- Group customers by region and count them")
-    print("- Show only product names and prices in the collection")
+    print("- Find all documents in the orders")
+    print("- Find distinct name categories")
+    print("- Sort orders by orderDate")
     user_query = input("Enter your query: ")
     mongo_query = generate_nlp_query(user_query)
     print(f"Generated Query: {mongo_query}")
