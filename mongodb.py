@@ -5,7 +5,7 @@ import re
 
 def connect_to_mongo():
     client = MongoClient(
-        host='13.57.241.139',  # Replace with your EC2 public IP address
+        host='54.177.98.191',  # Replace with your EC2 public IP address
         port=27017  # MongoDB default port
     )
     db = client['orders']  # Replace with your MongoDB database name
