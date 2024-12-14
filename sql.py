@@ -5,15 +5,6 @@ import pandas as pd
 
 
 def connect_to_sql(db_name='your_database_name'):
-    """
-    Connects to an SQL database and returns the connection object.
-
-    Parameters:
-    db_name (str): The name of the database to connect to.
-
-    Returns:
-    connection: The connection object for the SQL database.
-    """
     try:
         connection = pymysql.connect(
             host='13.57.26.234',  
