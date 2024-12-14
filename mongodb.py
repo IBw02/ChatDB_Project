@@ -5,10 +5,10 @@ import re
 
 def connect_to_mongo():
     client = MongoClient(
-        host='13.57.241.139',  # Replace with your EC2 public IP address
-        port=27017  # MongoDB default port
+        host='54.177.98.191', 
+        port=27017 
     )
-    db = client['orders']  # Replace with your MongoDB database name
+    db = client['orders'] 
     return db
 
 def explore_database(db):
@@ -17,7 +17,7 @@ def explore_database(db):
 
     for collection_name in collections:
         collection = db[collection_name]
-        sample_data = collection.find_one()  # Get one document as a sample
+        sample_data = collection.find_one()  
         if sample_data:
             fields = sample_data.keys()
             collections_info[collection_name] = {
@@ -58,7 +58,7 @@ query_patterns = [
     }
 ]
 
-# 选项 2：展示 3 个样本查询
+
 def show_sample_queries(db):
     collections = db.list_collection_names()
 
@@ -66,7 +66,7 @@ def show_sample_queries(db):
         print("No collections available in the database.")
         return
 
-    selected_queries = random.sample(query_patterns, 3)  # 随机选择3个查询模式
+    selected_queries = random.sample(query_patterns, 3)  
     print("\nSample Queries:")
 
     for query_info in selected_queries:
@@ -77,7 +77,7 @@ def show_sample_queries(db):
             fields = list(sample_data.keys())
 
             if 'field2' in query_info["query"].__code__.co_varnames:
-                # 确保至少有两个字段供多条件过滤
+
                 if len(fields) >= 2:
                     field1, field2 = random.sample(fields, 2)
                     print(f"- Description: {query_info['description']}")
@@ -91,7 +91,7 @@ def show_sample_queries(db):
                     print(f"- Description: {query_info['description']}")
                     print(f"  Query: {query_info['query'](collection)}")
 
-# 选项 3：生成查询（用户选择查询类型）
+
 def generate_queries(db):
     print("\nChoose a Query Type:")
     for i, pattern in enumerate(query_patterns, 1):
@@ -115,7 +115,7 @@ def generate_queries(db):
     query_index = int(query_type) - 1
     query_info = query_patterns[query_index]
 
-    # 根据选择的查询类型生成查询
+
     if 'field2' in query_info["query"].__code__.co_varnames and len(fields) >= 2:
         field1, field2 = random.sample(fields, 2)
         generated_query = query_info["query"](collection, field1, field2)
@@ -128,12 +128,12 @@ def generate_queries(db):
     print("\nGenerated Query:")
     print(f"  {generated_query}")
 
-# 自然语言查询解析函数
+
 def parse_query(query):
-    # 将查询转换为小写，便于匹配
+
     query = query.lower()
 
-    # 定义集合和对应的操作类型
+
     collections = ['products', 'orders', 'reviews', 'categories', 'users']
     actions = {
         'find': ['find', 'list', 'show'],
@@ -144,14 +144,14 @@ def parse_query(query):
         'project': ['only', 'show', 'display']
     }
 
-    # 查找目标集合
+
     collection = None
     for col in collections:
         if col in query:
             collection = col
             break
 
-    # 查找操作
+
     action = None
     for key, keywords in actions.items():
         for keyword in keywords:
@@ -164,14 +164,14 @@ def parse_query(query):
     else:
         return None, None
 
-# NLP 查询生成函数
+
 def generate_nlp_query(query):
     action, collection = parse_query(query)
 
     if not action or not collection:
         return {"error": "Could not determine action or target collection from the input."}
 
-    # 根据 action 和 collection 生成查询
+
     if action == 'find':
         mongo_query = f"db.{collection}.find({{}}).limit(10)"
     elif action == 'count':
@@ -189,7 +189,7 @@ def generate_nlp_query(query):
 
     return mongo_query
 
-# 选项 4：NLP 示例
+
 def nlp_examples():
     print("\nNLP Examples:")
     print("- Find all documents in the orders")
@@ -199,18 +199,18 @@ def nlp_examples():
     mongo_query = generate_nlp_query(user_query)
     print(f"Generated Query: {mongo_query}")
 
-# option 5
+
 def upload_json_to_mongodb(db):
-    # 提示用户输入文件路径
+
     file_path = input("Enter the file path to upload (JSON format): ")
 
-    # 提示用户输入集合名称
+
     collection_name = input("Enter the target collection name in MongoDB: ")
 
     collection = db[collection_name]
 
     try:
-        # 打开 JSON 文件并读取数据
+
         with open(file_path, 'r') as file:
             data = json.load(file)
 
@@ -233,7 +233,7 @@ def test_query(db):
     user_query = input("Query: ")
 
     try:
-        # 匹配集合名和操作类型
+
         collection_match = re.match(r"db\.([a-zA-Z_]+)\.([a-zA-Z_]+)\((.*)\)", user_query)
         if not collection_match:
             print("Invalid query format. Please use the format: db.collection.operation()")
@@ -248,14 +248,14 @@ def test_query(db):
         # 处理 find 操作
         if operation == "find":
             if parameters:
-                filter_dict = eval(parameters)  # 将字符串转换为字典（注意安全性）
+                filter_dict = eval(parameters)
                 result = collection.find(filter_dict)
             else:
                 result = collection.find()
             for doc in result:
                 print(doc)
 
-        # 处理 count_documents 操作
+
         elif operation == "count":
             if parameters:
                 filter_dict = eval(parameters)
@@ -264,17 +264,17 @@ def test_query(db):
                 count = collection.count_documents({})
             print(f"Count: {count}")
 
-        # 处理 aggregate 操作（分组）
+
         elif operation == "aggregate":
             if parameters:
-                pipeline = eval(parameters)  # 将字符串转换为列表（注意安全性）
+                pipeline = eval(parameters)
             else:
                 pipeline = []
             result = collection.aggregate(pipeline)
             for doc in result:
                 print(doc)
 
-        # 处理 sort 操作
+
         elif operation == "sort":
             if parameters:
                 sort_field, sort_order = parameters.split(",")
@@ -286,7 +286,6 @@ def test_query(db):
             else:
                 print("Sort operation requires field and order (e.g., 'field, 1' or 'field, -1')")
 
-        # 处理其他不支持的操作
         else:
             print("Unsupported operation. Supported operations: find, count, aggregate, sort")
 
